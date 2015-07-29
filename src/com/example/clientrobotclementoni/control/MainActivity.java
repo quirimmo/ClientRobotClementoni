@@ -1,8 +1,13 @@
-package com.example.clientrobotclementoni;
+package com.example.clientrobotclementoni.control;
 
 
-import com.example.clientrobotclementoni.LeDeviceListAdapter;
-import com.example.clientrobotclementoni.BluetoothLeClass;
+import com.example.clientrobotclementoni.R;
+import com.example.clientrobotclementoni.R.id;
+import com.example.clientrobotclementoni.R.layout;
+import com.example.clientrobotclementoni.R.menu;
+import com.example.clientrobotclementoni.service.bluetooth.BluetoothLeClass;
+import com.example.clientrobotclementoni.service.bluetooth.LeDeviceListAdapter;
+import com.example.clientrobotclementoni.service.bluetooth.BluetoothLeClass.OnConnectListener;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;

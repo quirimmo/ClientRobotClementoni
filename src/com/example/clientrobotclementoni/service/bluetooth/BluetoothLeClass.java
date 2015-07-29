@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.clientrobotclementoni;
+package com.example.clientrobotclementoni.service.bluetooth;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;

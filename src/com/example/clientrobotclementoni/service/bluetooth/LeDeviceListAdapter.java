@@ -1,4 +1,4 @@
-package com.example.clientrobotclementoni;
+package com.example.clientrobotclementoni.service.bluetooth;
 
 import java.util.ArrayList;
 
