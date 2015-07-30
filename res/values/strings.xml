@@ -18,6 +18,15 @@
     <string name="button_real_time_backward">Backward</string>
     <string name="button_real_time_left">Left</string>
     <string name="button_real_time_right">Right</string>
+    <string name="textview_real_time_select_speed">Select Speed: </string>
+    
+    
+    <string name="textview_real_time_select_led_mode">Select Led Mode: </string>
+    
+    
+    <string name="textview_real_time_select_sound">Select Sound: </string>
+    <string name="button_real_time_play_sound">Play </string>
+    
     
 
 </resources>

@@ -1,7 +1,11 @@
 package com.example.clientrobotclementoni.service.robot;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.example.clientrobotclementoni.R;
 import com.example.clientrobotclementoni.model.RobotConfiguration;
@@ -20,8 +24,14 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.os.Handler;
 
-public class RobotProxy {
-	
+public class RobotProxy implements Runnable {
+
+	public static enum ControlMode{
+		REAL_TIME_CONTROL,
+		MEMORY_CONTROL,
+		RECORD_CONTROL
+	}
+
 	private static RobotProxy instance= null;
 	
 	protected boolean connected= false, found= false, scanning= false;
@@ -37,10 +47,18 @@ public class RobotProxy {
 	protected List<BluetoothGattService> bluetoothServices= new ArrayList<BluetoothGattService>();
 	protected BluetoothGattCharacteristic writeCharacteristic;
 	
-	
-	
+	protected ControlMode controlMode = ControlMode.REAL_TIME_CONTROL;
+
+	protected Queue<RobotCommand> commandQueue = new ConcurrentLinkedQueue<RobotCommand>();
+
+	protected static int UPDATE_SLEEP_TIME=100;
+	protected RobotCommand updateCommand = null;
+	protected Thread updateThread ;
+
 	private RobotProxy(){
-		
+		updateThread = new Thread(this);
+		DeviceUtility.log("RobotProxy Created!");
+		updateThread.start();
 	}
 	
 	public static RobotProxy getInstance(){
@@ -77,17 +95,17 @@ public class RobotProxy {
 	@SuppressWarnings("deprecation")
 	public void startScanning(final Activity activity, final boolean autoConnect){
 		bluetoothAdapter.startLeScan(new BluetoothAdapter.LeScanCallback() {
-	        @Override
-	        public void onLeScan(final BluetoothDevice device, int rssi, byte[] scanRecord) {
-	        	if( device.getName().equals("Hyber Robot") ){
-	        		devices.add(device);
-	        		found= true;
-	        		DeviceUtility.log("Robot Found");
-	        		if(autoConnect)
-	        			connect(activity);
-	        	}
-	        }
-	    });
+			@Override
+			public void onLeScan(final BluetoothDevice device, int rssi, byte[] scanRecord) {
+				if (device.getName().equals("Hyber Robot")) {
+					devices.add(device);
+					found = true;
+					DeviceUtility.log("Robot Found");
+					if (autoConnect)
+						connect(activity);
+				}
+			}
+		});
 	}
 	
 	@SuppressWarnings("deprecation")
@@ -95,34 +113,41 @@ public class RobotProxy {
 		bluetoothAdapter.stopLeScan(new BluetoothAdapter.LeScanCallback() {
 			@Override
 			public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
-        		DeviceUtility.log("ON LE SCAN CALLBACK");
+				DeviceUtility.log("ON LE SCAN CALLBACK");
 			}
 		});
 	}
-	
-	
-	
-	
+
+
+	/**
+	 * Starts BLE Scan cycle
+	 * @param activity
+	 * @param autoConnect
+	 * @return
+	 */
 	public boolean scanningCheck(final Activity activity, final boolean autoConnect){
 		this.scanning= true;
 		
 		this.handler= new Handler();
 		this.handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                scanning = false;
-                stopScanning();
-            }
-        }, RobotConfiguration.SCANNING_DURATION);
+			@Override
+			public void run() {
+				scanning = false;
+				stopScanning();
+			}
+		}, RobotConfiguration.SCANNING_DURATION);
 		
 		
 		this.startScanning(activity, autoConnect);
 		
 		return this.found;
 	}
-	
-	
-	
+
+
+	/**
+	 * Connects to BLE Device
+	 * @param activity
+	 */
 	public void connect(final Activity activity){
 		
 		
@@ -148,10 +173,11 @@ public class RobotProxy {
 		
 		this.bluetoothLowEnergyClass.connect(devices.get(0).getAddress());
 	}
-	
-	
-	
-	
+
+
+	/**
+	 * Attaches BLE Listeners
+	 */
 	private void attachListeners(){
 		
 		this.bluetoothLowEnergyClass.setOnConnectListener(new BluetoothLeClass.OnConnectListener() {
@@ -165,43 +191,81 @@ public class RobotProxy {
 			@Override
 			public void onDisconnect(BluetoothGatt gatt) {
 				DeviceUtility.log("DISCONNECTED FROM ROBOT!!!!");
-				connected= false;
+				connected = false;
 			}
 		}); 
 		this.bluetoothLowEnergyClass.setOnServiceDiscoverListener(new BluetoothLeClass.OnServiceDiscoverListener() {
 			@Override
 			public void onServiceDiscover(BluetoothGatt gatt) {
-				bluetoothServices=gatt.getServices();
+				bluetoothServices = gatt.getServices();
 				DeviceUtility.log("DISCOVERED " + bluetoothServices.size() + " SERVICES");
-				for(BluetoothGattService service: bluetoothServices){
+				for (BluetoothGattService service : bluetoothServices) {
 					DeviceUtility.printService(service);
-					for (final BluetoothGattCharacteristic gattCharacteristic: service.getCharacteristics() ) {
+					for (final BluetoothGattCharacteristic gattCharacteristic : service.getCharacteristics()) {
 						DeviceUtility.printGattCharacteristic(gattCharacteristic);
-						if(gattCharacteristic.getUuid().toString().equals(RobotConfiguration.UUID_WRITE_DATA))
-							writeCharacteristic= gattCharacteristic;
+						if (gattCharacteristic.getUuid().toString().equals(RobotConfiguration.UUID_WRITE_DATA))
+							writeCharacteristic = gattCharacteristic;
 					}
 				}
 			}
 		});
 		
 	}
-	
-	
-	public void sendCommand(String command){
-		this.writeCharacteristic.setValue(command);
+
+
+	protected void queueCommand(RobotCommand command){
+		DeviceUtility.log("Queueing command: " + command.toString());
+		commandQueue.add(command);
+	}
+
+	/**
+	 * Send BLE Command
+	 * @param command
+	 */
+	protected void sendCommand(RobotCommand command){
+		DeviceUtility.log("Sending command: " + command.movementType.toString());
+		this.writeCharacteristic.setValue(command.toString());
 		this.bluetoothLowEnergyClass.writeCharacteristic(this.writeCharacteristic);
 	}
-	
-	
-	
+
+
+	@Override
+	public void run() {
+		while(1==1){
+
+			if(controlMode==ControlMode.REAL_TIME_CONTROL){
+				if(updateCommand!=null){
+					sendCommand(updateCommand);
+				}
+			}
+
+			try {
+				Thread.sleep(UPDATE_SLEEP_TIME);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
 	public void moveForward(int speed){
-		this.sendCommand(RobotCommand.generateMovementCommand(MovementType.UP, speed).toString());
+		updateCommand = RobotCommand.generateMovementCommand(MovementType.UP, speed);
 	}
-	public void moveForward(){
-		this.sendCommand(RobotCommand.generateMovementCommand(MovementType.UP, 3).toString());
+
+	public void moveBackward(int speed){
+		updateCommand = RobotCommand.generateMovementCommand(MovementType.DOWN, speed);
 	}
-	
-	
+
+	public void moveLeft(int speed){
+		updateCommand = RobotCommand.generateMovementCommand(MovementType.LEFT, speed);
+	}
+
+	public void moveRight(int speed){
+		updateCommand = RobotCommand.generateMovementCommand(MovementType.RIGHT, speed);
+	}
+
+	public void stopMove(){
+		updateCommand = RobotCommand.generateMovementCommand(MovementType.STOP,0);
+	}
 	
 	public BluetoothGattCharacteristic getWriteCharacteristic() {
 		return writeCharacteristic;
