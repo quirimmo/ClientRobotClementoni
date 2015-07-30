@@ -1,4 +1,4 @@
-package com.example.clientrobotclementoni.service;
+package com.example.clientrobotclementoni.service.robot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,6 +6,7 @@ import java.util.List;
 import com.example.clientrobotclementoni.R;
 import com.example.clientrobotclementoni.model.RobotConfiguration;
 import com.example.clientrobotclementoni.service.bluetooth.BluetoothLeClass;
+import com.example.clientrobotclementoni.service.robot.RobotCommand.MovementType;
 import com.example.clientrobotclementoni.utility.DeviceUtility;
 import com.example.clientrobotclementoni.utility.Utils;
 
@@ -33,6 +34,10 @@ public class RobotProxy {
 	protected String address;
 	protected List<BluetoothDevice> devices= new ArrayList<BluetoothDevice>();
 	
+	protected List<BluetoothGattService> bluetoothServices= new ArrayList<BluetoothGattService>();
+	protected BluetoothGattCharacteristic writeCharacteristic;
+	
+	
 	
 	private RobotProxy(){
 		
@@ -46,14 +51,12 @@ public class RobotProxy {
 
 	
 	
-	
-	
 	public BluetoothAdapter checkBluetoothSupport(Activity activity){
 		
 		final BluetoothManager bluetoothManager = (BluetoothManager) activity.getSystemService(Context.BLUETOOTH_SERVICE);
 		this.bluetoothAdapter = bluetoothManager.getAdapter();
         if (this.bluetoothAdapter == null) {
-        	DeviceUtility.log(activity, activity.getResources().getString(R.string.error_bluetooth_not_supported));
+        	DeviceUtility.log(activity.getResources().getString(R.string.error_bluetooth_not_supported));
             return null;
         }
 		
@@ -79,7 +82,7 @@ public class RobotProxy {
 	        	if( device.getName().equals("Hyber Robot") ){
 	        		devices.add(device);
 	        		found= true;
-	        		DeviceUtility.log(activity, "Robot Found");
+	        		DeviceUtility.log("Robot Found");
 	        		if(autoConnect)
 	        			connect(activity);
 	        	}
@@ -88,11 +91,11 @@ public class RobotProxy {
 	}
 	
 	@SuppressWarnings("deprecation")
-	public void stopScanning(final Activity activity){
+	public void stopScanning(){
 		bluetoothAdapter.stopLeScan(new BluetoothAdapter.LeScanCallback() {
 			@Override
 			public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
-        		DeviceUtility.log(activity, "Scanning Stopped");
+        		DeviceUtility.log("ON LE SCAN CALLBACK");
 			}
 		});
 	}
@@ -108,7 +111,7 @@ public class RobotProxy {
             @Override
             public void run() {
                 scanning = false;
-                stopScanning(activity);
+                stopScanning();
             }
         }, RobotConfiguration.SCANNING_DURATION);
 		
@@ -124,135 +127,93 @@ public class RobotProxy {
 		
 		
 		if(this.devices.isEmpty()){
-			DeviceUtility.log(activity, "No BLE Device");
+			DeviceUtility.log("No BLE Device");
 			return;
 		}
 		
 		if(this.scanning){
-			this.stopScanning(activity);
+			this.stopScanning();
 			this.scanning= false;
 		}
 	
 		
 		this.bluetoothLowEnergyClass= new BluetoothLeClass(activity);
 		if (!this.bluetoothLowEnergyClass.initialize()) {
-			DeviceUtility.log(activity, "Unable to initialize Bluetooth");
+			DeviceUtility.log("Unable to initialize Bluetooth");
             activity.finish();
             return;
         }
+		
+		this.attachListeners();
+		
+		this.bluetoothLowEnergyClass.connect(devices.get(0).getAddress());
+	}
+	
+	
+	
+	
+	private void attachListeners(){
+		
 		this.bluetoothLowEnergyClass.setOnConnectListener(new BluetoothLeClass.OnConnectListener() {
 			@Override
 			public void onConnect(BluetoothGatt gatt) {
-				DeviceUtility.log(activity, "CONNECTED TO ROBOT!!!!");
+				DeviceUtility.log("CONNECTED TO ROBOT!!!!");
 				connected= true;
 			}
 		}); 
 		this.bluetoothLowEnergyClass.setOnDisconnectListener(new BluetoothLeClass.OnDisconnectListener() {
 			@Override
 			public void onDisconnect(BluetoothGatt gatt) {
-				DeviceUtility.log(activity, "DISCONNECTED FROM ROBOT!!!!");
+				DeviceUtility.log("DISCONNECTED FROM ROBOT!!!!");
+				connected= false;
 			}
 		}); 
 		this.bluetoothLowEnergyClass.setOnServiceDiscoverListener(new BluetoothLeClass.OnServiceDiscoverListener() {
 			@Override
 			public void onServiceDiscover(BluetoothGatt gatt) {
-				DeviceUtility.log(activity, "CAZZATA");
-			}
-		});
-
-		
-		
-		
-		this.bluetoothLowEnergyClass.connect(devices.get(0).getAddress());
-	}
-	
-	public void connect2(Activity activity){
-		this.bluetoothLowEnergyClass.connect(devices.get(0).getAddress());
-		DeviceUtility.printDeviceInformations(devices.get(0), activity);
-	}
-	
-	
-	BluetoothGattCharacteristic TEST_gattCharacteristic=null;
-	public void test(Activity activity){
-		if(TEST_gattCharacteristic!=null){
-			String full2= createMotionControl(DIRECTIONS.UP, 8);
-			TEST_gattCharacteristic.setValue(full2);
-            this.bluetoothLowEnergyClass.writeCharacteristic(TEST_gattCharacteristic);
-            DeviceUtility.log(activity, "=Running...");
-		}else{
-			List<BluetoothGattService> lis= this.bluetoothLowEnergyClass.getSupportedGattServices();
-			DeviceUtility.log(activity, "SERVICES NUMBER: " + lis.size());
-			for(BluetoothGattService service: lis){
-				DeviceUtility.log(activity, "=============================================================================");
-				DeviceUtility.log(activity, service.getUuid().toString());
-				for (final BluetoothGattCharacteristic gattCharacteristic: service.getCharacteristics() ) {
-					if(gattCharacteristic.getUuid().toString().equals("0000fff5-0000-1000-8000-00805f9b34fb")){
-						TEST_gattCharacteristic = gattCharacteristic;
-	//					DeviceUtility.log(activity, "ENTRATO");
-	//					String temp ="78";
-	//					String BTSendData = temp+0+'E';
-	//					gattCharacteristic.setValue(BTSendData);
-	//					this.bluetoothLowEnergyClass.writeCharacteristic(gattCharacteristic);
-					/*	int R_Back_Data  = 1;  
-						String R_Data  = 'D'+String.valueOf(R_Back_Data);
-	                    String G_Data  = 'S'+String.valueOf(1-1);
-	                    int Cmd_Type = 1;
-	                    String full= "12" + R_Data + G_Data;
-	                    String full2= createMotionControl(DIRECTIONS.UP, 8);
-	                    gattCharacteristic.setValue(full2);
-	                    this.bluetoothLowEnergyClass.writeCharacteristic(gattCharacteristic);*/
+				bluetoothServices=gatt.getServices();
+				DeviceUtility.log("DISCOVERED " + bluetoothServices.size() + " SERVICES");
+				for(BluetoothGattService service: bluetoothServices){
+					DeviceUtility.printService(service);
+					for (final BluetoothGattCharacteristic gattCharacteristic: service.getCharacteristics() ) {
+						DeviceUtility.printGattCharacteristic(gattCharacteristic);
+						if(gattCharacteristic.getUuid().toString().equals(RobotConfiguration.UUID_WRITE_DATA))
+							writeCharacteristic= gattCharacteristic;
 					}
-					DeviceUtility.log(activity, gattCharacteristic.getUuid().toString());
-					DeviceUtility.log(activity, "ROBA: " + Utils.getCharPropertie(gattCharacteristic.getProperties()));
-					DeviceUtility.log(activity, "------------------------------------");
 				}
 			}
-		}
-		
+		});
 		
 	}
 	
-	public void sendCommand(Activity activity, String command){
-		if(TEST_gattCharacteristic==null){
-			test(activity);
-		}
-		if(TEST_gattCharacteristic==null){
-			return;
-		}
-		TEST_gattCharacteristic.setValue(command);
-        this.bluetoothLowEnergyClass.writeCharacteristic(TEST_gattCharacteristic);
-	}
 	
-	
-	public enum DIRECTIONS {
-		UP(0),
-		DOWN(1),
-		LEFT(2),
-		RIGHT(3),
-		STOP(5);
-		
-		private int v;
-		DIRECTIONS(int i ){
-			v=i;
-		}
-		
-		int getValue(){
-			return v;
-		}
-		
-	};
-	
-	
-	
-	public String createMotionControl(DIRECTIONS direction, int speed){
-		return "12" + "D" + direction.getValue() + "S" + speed;
+	public void sendCommand(String command){
+		this.writeCharacteristic.setValue(command);
+		this.bluetoothLowEnergyClass.writeCharacteristic(this.writeCharacteristic);
 	}
 	
 	
 	
-	public void disconnect(Activity activity){
+	public void moveForward(int speed){
+		this.sendCommand(RobotCommand.generateMovementCommand(MovementType.UP, speed).toString());
+	}
+	public void moveForward(){
+		this.sendCommand(RobotCommand.generateMovementCommand(MovementType.UP, 3).toString());
+	}
+	
+	
+	
+	public BluetoothGattCharacteristic getWriteCharacteristic() {
+		return writeCharacteristic;
+	}
+
+	public void setWriteCharacteristic(BluetoothGattCharacteristic writeCharacteristic) {
+		this.writeCharacteristic = writeCharacteristic;
+	}
+
+	public void disconnect(){
 		this.bluetoothLowEnergyClass.disconnect();
-		DeviceUtility.log(activity, "Disconnected");
+		DeviceUtility.log("Disconnected");
 	}
 
 	public boolean isConnected() {
@@ -262,7 +223,14 @@ public class RobotProxy {
 	public void setConnected(boolean connected) {
 		this.connected = connected;
 	}
-	
+
+	public BluetoothLeClass getBluetoothLowEnergyClass() {
+		return bluetoothLowEnergyClass;
+	}
+
+	public void setBluetoothLowEnergyClass(BluetoothLeClass bluetoothLowEnergyClass) {
+		this.bluetoothLowEnergyClass = bluetoothLowEnergyClass;
+	}
 	
 	
 }

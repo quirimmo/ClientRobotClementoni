@@ -2,12 +2,12 @@ package com.example.clientrobotclementoni.control;
 
 
 import com.example.clientrobotclementoni.R;
-import com.example.clientrobotclementoni.service.RobotProxy;
-import com.example.clientrobotclementoni.service.RobotProxy.DIRECTIONS;
+import com.example.clientrobotclementoni.service.robot.RobotProxy;
 import com.example.clientrobotclementoni.utility.DeviceUtility;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -18,7 +18,8 @@ import android.widget.Button;
 
 public class MainActivity extends Activity {
 
-	protected Button buttonOpenBluetoothConnection, buttonCloseBluetoothConnection, buttonConnectToRobot, buttonTest;
+	protected Button buttonOpenBluetoothConnection, buttonCloseBluetoothConnection, buttonConnectToRobot, buttonRealTimeMode,
+					buttonAutoconnectScanning;
 	 static boolean send_thread = false;
 		
 	
@@ -47,12 +48,16 @@ public class MainActivity extends Activity {
 	}
 	
 	
+	
+	protected Thread motionThread;
+	
 	private void setupMainPageWidgets(){
 		
 		this.buttonOpenBluetoothConnection= (Button) this.findViewById(R.id.buttonOpenBluetoothConnection);
 		this.buttonCloseBluetoothConnection= (Button) this.findViewById(R.id.buttonCloseBluetoothConnection);
 		this.buttonConnectToRobot= (Button) this.findViewById(R.id.buttonConnectToRobot);
-		this.buttonTest= (Button) this.findViewById(R.id.buttonTest);
+		this.buttonAutoconnectScanning= (Button) this.findViewById(R.id.buttonAutoconnectScanning);
+		this.buttonRealTimeMode= (Button) this.findViewById(R.id.buttonRealTimeMode);
 		final MainActivity instance= this;
 		
 		this.buttonOpenBluetoothConnection.setOnClickListener(new View.OnClickListener() {
@@ -68,7 +73,53 @@ public class MainActivity extends Activity {
 			}
 		});
 
+		this.buttonAutoconnectScanning.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				RobotProxy.getInstance().scanningCheck(instance, true);
+			}
+		});
+
+		this.buttonCloseBluetoothConnection.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				RobotProxy.getInstance().disconnect();
+			}
+		});
 		
+		this.buttonRealTimeMode.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				Intent myIntent = new Intent(instance, RealTimeModeActivity.class);
+				startActivity(myIntent);
+			}
+		});
+		
+		
+		
+		
+		/*
+		this.buttonTest.setOnTouchListener(new View.OnTouchListener() {
+			@Override
+			public boolean onTouch(View v, final MotionEvent event) {
+				
+				if(event.getAction() == MotionEvent.ACTION_DOWN){
+					RobotProxy.getInstance().getWriteCharacteristic().setValue("12D2S3");
+					RobotProxy.getInstance().getBluetoothLowEnergyClass().writeCharacteristic(RobotProxy.getInstance().getWriteCharacteristic());
+				}
+				if(event.getAction() == MotionEvent.ACTION_UP){
+					RobotProxy.getInstance().getWriteCharacteristic().setValue("12D5S3");
+					RobotProxy.getInstance().getBluetoothLowEnergyClass().writeCharacteristic(RobotProxy.getInstance().getWriteCharacteristic());
+				}
+				
+				return true;
+				
+			}
+		});	
+		*/
+		
+
+		/*
 		this.buttonTest.setOnTouchListener(new View.OnTouchListener() {
 			@Override
 			public boolean onTouch(View v, MotionEvent event) {
@@ -88,13 +139,6 @@ public class MainActivity extends Activity {
 				
 			}
 		});	
-		
-		this.buttonCloseBluetoothConnection.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				RobotProxy.getInstance().disconnect(instance);
-			}
-		});
 		
 		Thread loggingThread = new Thread(new Runnable(){
 		     public void run(){
@@ -118,6 +162,10 @@ public class MainActivity extends Activity {
 		     }
 		});
 		loggingThread.start();
+		*/
+		
+		
+		
 		
 	}
 	

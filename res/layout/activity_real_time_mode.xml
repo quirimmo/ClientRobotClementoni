@@ -6,42 +6,38 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.example.clientrobotclementoni.control.MainActivity" >
+    tools:context="com.example.clientrobotclementoni.control.RealTimeModeActivity" >
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
         android:orientation="vertical" >
 
         <Button
-            android:id="@+id/buttonOpenBluetoothConnection"
+            android:id="@+id/buttonRealTimeForward"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/button_open_bluetooth_connection" />
+            android:text="@string/button_real_time_forward" />
 
         <Button
-            android:id="@+id/buttonCloseBluetoothConnection"
+            android:id="@+id/buttonRealTimeBackward"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/button_close_bluetooth_connection" />
+            android:text="@string/button_real_time_backward" />
 
         <Button
-            android:id="@+id/buttonConnectToRobot"
+            android:id="@+id/buttonRealTimeRight"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/button_connect_to_robot" />
+            android:text="@string/button_real_time_right" />
 
         <Button
-            android:id="@+id/buttonAutoconnectScanning"
+            android:id="@+id/buttonRealTimeLeft"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/button_autoconnect_scanning" />
-
-        <Button
-            android:id="@+id/buttonRealTimeMode"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/button_real_time_mode" />
+            android:text="@string/button_real_time_left" />
 
     </LinearLayout>
 

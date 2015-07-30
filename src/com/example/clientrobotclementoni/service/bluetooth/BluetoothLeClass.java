@@ -200,7 +200,7 @@ public class BluetoothLeClass{
         // We want to directly connect to the device, so we are setting the autoConnect
         // parameter to false.
         mBluetoothGatt = device.connectGatt(mContext, false, mGattCallback);
-        DeviceUtility.log(mContext, TAG + " - Trying to create a new connection.");
+        DeviceUtility.log(TAG + " - Trying to create a new connection.");
         mBluetoothDeviceAddress = address;
         return true;
     }
