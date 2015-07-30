@@ -6,5 +6,7 @@
     <string name="action_settings">Settings</string>
     <string name="button_open_bluetooth_connection">Open Bluetooth Connection</string>
     <string name="button_close_bluetooth_connection">Close Bluetooth Connection</string>
+    <string name="button_connect_to_robot">Connect To Robot</string>
+    <string name="error_bluetooth_not_supported">Bluetooth not supported.</string>
 
 </resources>
